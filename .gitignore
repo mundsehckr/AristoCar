@@ -1,0 +1,97 @@
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js build outputs
+/.next/
+/out/
+
+# Production build
+/build
+/dist
+
+# Static HTML site exports
+*.html
+
+# Environment variables
+.env
+.env*.local
+!.env.example
+!.env.template
+
+# TypeScript cache files
+*.tsbuildinfo
+next-env.d.ts
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test coverage
+/coverage
+/reports
+
+# Firebase
+.firebase/
+firebase-debug.log
+database-debug.log
+
+# Genkit
+.genkit/
+.genkit-cache/
+
+# Log files
+logs
+*.log
+debug.log*
+error.log*
+# TODO: Remove this after fixing the Genkit issues
+genkit-debug.log
+
+# Compiled output
+dist
+tmp
+temp
+*.tmp
+*.temp
+*.patch
+
+# Misc
+*.bak
+*.ghc
+*.orig
+*.zip
+*.tar.gz
+*.rar
+*.swo
+*.swp
+*~
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

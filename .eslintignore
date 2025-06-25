@@ -1,0 +1,20 @@
+
+# Directories
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+public/
+
+# Configuration files
+*.config.js
+*.config.ts
+next.config.mjs
+
+# Generated files
+next-env.d.ts
+
+# Specific files you might want to ignore
+# src/some-legacy-code.js
