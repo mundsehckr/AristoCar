@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -15,18 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
-const IndianRupee = ({ amount }: { amount: number }) => <>₹{amount.toLocaleString('en-IN')}</>;
-
-const sampleUserListings = [
-    { id: '1', title: '2021 Maruti Swift VXI', imageUrl: 'https://placehold.co/400x300.png', imageHint: 'hatchback red side', price: 650000, status: 'Active', views: 1254, messages: 12, dateListed: '2024-07-15' },
-    { id: '2', title: '2019 Honda Amaze Diesel', imageUrl: 'https://placehold.co/400x300.png', imageHint: 'sedan silver elegant', price: 780000, status: 'Sold', views: 2500, messages: 35, dateListed: '2024-06-01' },
-    { id: '3', title: '2022 Hyundai Creta SX', imageUrl: 'https://placehold.co/400x300.png', imageHint: 'suv white modern', price: 1500000, status: 'Active', views: 890, messages: 5, dateListed: '2024-07-22' },
-    { id: '4', title: '2020 Tata Nexon EV', imageUrl: 'https://placehold.co/400x300.png', imageHint: 'ev teal compact', price: 1400000, status: 'Inactive', views: 500, messages: 2, dateListed: '2024-05-10' },
-];
+const IndianRupee = ({ amount }: { amount: number }) => <>₹{amount?.toLocaleString('en-IN') ?? '--'}</>;
 
 export default function MyListingsPage() {
     const { isAuthenticated, user, loading } = useAuth();
     const router = useRouter();
+    const [userListings, setUserListings] = useState<any[]>([]);
+    const [fetching, setFetching] = useState(true);
 
     useEffect(() => {
         if (!loading && !isAuthenticated) {
@@ -34,6 +28,26 @@ export default function MyListingsPage() {
         }
     }, [isAuthenticated, loading, router]);
 
+    useEffect(() => {
+        const fetchListings = async () => {
+            setFetching(true);
+            try {
+                const res = await fetch('/api/listings', { method: 'GET' });
+                const data = await res.json();
+                if (res.ok && data.listings) {
+                    setUserListings(data.listings);
+                } else {
+                    setUserListings([]);
+                }
+            } catch {
+                setUserListings([]);
+            }
+            setFetching(false);
+        };
+        if (isAuthenticated && user) {
+            fetchListings();
+        }
+    }, [isAuthenticated, user]);
 
     if (loading || !isAuthenticated || !user) {
         return (
@@ -62,34 +76,49 @@ export default function MyListingsPage() {
                     </Button>
                 </div>
                 
-                {sampleUserListings.length > 0 ? (
+                {fetching ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="ml-3 text-muted-foreground">Fetching your listings...</span>
+                    </div>
+                ) : userListings.length > 0 ? (
                     <div className="space-y-6">
-                        {sampleUserListings.map((listing) => (
-                             <Card key={listing.id} className="shadow-lg bg-card/95 backdrop-blur-sm flex flex-col md:flex-row overflow-hidden">
+                        {userListings.map((listing) => (
+                             <Card key={listing._id} className="shadow-lg bg-card/95 backdrop-blur-sm flex flex-col md:flex-row overflow-hidden">
                                 <div className="md:w-1/4 relative">
-                                    <Image src={listing.imageUrl} alt={listing.title} width={400} height={300} className="object-cover w-full h-full" data-ai-hint={listing.imageHint} />
+                                    <Image
+                                        src={listing.photoUrls?.[0] || 'https://placehold.co/400x300.png'}
+                                        alt={listing.title || 'Car Image'}
+                                        width={400}
+                                        height={300}
+                                        className="object-cover w-full h-full"
+                                    />
                                     <Badge 
                                         className={`absolute top-2 left-2 text-white ${listing.status === 'Active' ? 'bg-green-600' : listing.status === 'Sold' ? 'bg-slate-600' : 'bg-orange-500'}`}
                                     >
-                                        {listing.status}
+                                        {listing.status || 'Active'}
                                     </Badge>
                                 </div>
                                 <div className="md:w-3/4 p-4 flex flex-col">
                                     <div className="flex-grow">
-                                        <h3 className="font-headline text-xl text-primary hover:text-accent"><Link href={`/vehicles/${listing.id}`}>{listing.title}</Link></h3>
-                                        <p className="text-lg font-semibold text-accent"><IndianRupee amount={listing.price} /></p>
+                                        <h3 className="font-headline text-xl text-primary hover:text-accent">
+                                            <Link href={`/vehicles/${listing._id}`}>{listing.title || `${listing.year} ${listing.make} ${listing.model}`}</Link>
+                                        </h3>
+                                        <p className="text-lg font-semibold text-accent">
+                                            <IndianRupee amount={listing.suggestedPrice || listing.price || 0} />
+                                        </p>
                                         <div className="text-sm text-muted-foreground mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
-                                            <span><strong>Views:</strong> {listing.views}</span>
-                                            <span><strong>Messages:</strong> {listing.messages}</span>
-                                            <span><strong>Listed On:</strong> {new Date(listing.dateListed).toLocaleDateString()}</span>
+                                            <span><strong>Views:</strong> {listing.views ?? '--'}</span>
+                                            <span><strong>Messages:</strong> {listing.messages ?? '--'}</span>
+                                            <span><strong>Listed On:</strong> {listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '--'}</span>
                                         </div>
                                     </div>
                                     <Separator className="my-4"/>
                                     <div className="flex flex-wrap gap-2 justify-end">
                                         <Button variant="outline" size="sm"><Edit className="mr-1.5 h-3 w-3"/> Edit</Button>
-                                        {listing.status === 'Active' && <Button variant="outline" size="sm" className="text-red-600 border-red-600/50 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-1.5 h-3 w-3"/> Delete</Button>}
-                                        {listing.status === 'Active' && <Button variant="secondary" size="sm"><ToggleRight className="mr-1.5 h-4 w-4"/> Mark as Sold</Button>}
-                                        {listing.status !== 'Active' && <Button variant="outline" size="sm">Re-list Vehicle</Button>}
+                                        {(!listing.status || listing.status === 'Active') && <Button variant="outline" size="sm" className="text-red-600 border-red-600/50 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-1.5 h-3 w-3"/> Delete</Button>}
+                                        {(!listing.status || listing.status === 'Active') && <Button variant="secondary" size="sm"><ToggleRight className="mr-1.5 h-4 w-4"/> Mark as Sold</Button>}
+                                        {listing.status && listing.status !== 'Active' && <Button variant="outline" size="sm">Re-list Vehicle</Button>}
                                     </div>
                                 </div>
                             </Card>
@@ -112,4 +141,3 @@ export default function MyListingsPage() {
         </div>
     );
 }
-

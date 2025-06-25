@@ -1,31 +1,32 @@
-
 "use client";
 
+import * as z from 'zod';
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Sparkles, UploadCloud, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import Image from 'next/image';
-
-// AI Flow imports (assuming they are server actions)
 import { generateListingDetails, GenerateListingDetailsInput, GenerateListingDetailsOutput } from '@/ai/flows/generate-listing-details';
 import { analyzeVehicleCondition, AnalyzeVehicleConditionInput, AnalyzeVehicleConditionOutput } from '@/ai/flows/analyze-vehicle-condition';
 import { suggestListingPrice, SuggestListingPriceInput, SuggestListingPriceOutput } from '@/ai/flows/suggest-listing-price';
 import { useToast } from '@/hooks/use-toast';
 
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "dipxp0wz5";
+const CLOUDINARY_UPLOAD_PRESET = "car-listings";
+
 const listingSchema = z.object({
-  photos: z.custom<FileList>((val) => val instanceof FileList && val.length > 0, 'At least one photo is required')
-    .refine((files) => Array.from(files).every(file => file.size <= 5 * 1024 * 1024), 'Each file must be 5MB or less.')
-    .refine((files) => Array.from(files).length <= 5, 'Maximum 5 photos allowed.'),
+  photos: z
+    .custom<File[]>((val) => Array.isArray(val) && val.length > 0, 'At least one photo is required')
+    .refine((files) => files.every(file => file.size <= 5 * 1024 * 1024), 'Each file must be 5MB or less.')
+    .refine((files) => files.length <= 5, 'Maximum 5 photos allowed.'),
   vin: z.string().optional(),
   make: z.string().min(2, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
@@ -37,15 +38,15 @@ const listingSchema = z.object({
     (a) => parseInt(z.string().parse(a), 10),
     z.number().min(0, 'Mileage (in km) must be positive')
   ),
-  conditionDescription: z.string().optional(), // Manual condition description
+  conditionDescription: z.string().optional(),
   pincode: z.string().regex(/^\d{6}$/, 'Invalid Pincode (must be 6 digits)'),
   title: z.string().optional(),
   description: z.string().optional(),
   keyFeatures: z.array(z.string()).optional(),
-  overallCondition: z.string().optional(), // AI generated
-  damageAssessment: z.string().optional(), // AI generated
-  suggestedPrice: z.number().optional(), // AI generated
-  marketAnalysis: z.string().optional(), // AI generated
+  overallCondition: z.string().optional(),
+  damageAssessment: z.string().optional(),
+  suggestedPrice: z.number().optional(),
+  marketAnalysis: z.string().optional(),
 });
 
 type ListingFormData = z.infer<typeof listingSchema>;
@@ -53,7 +54,7 @@ type ListingFormData = z.infer<typeof listingSchema>;
 export function CreateListingForm() {
   const { toast } = useToast();
   const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // New state for submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiResults, setAiResults] = useState<{
     listingDetails?: GenerateListingDetailsOutput;
     conditionAnalysis?: AnalyzeVehicleConditionOutput;
@@ -61,21 +62,29 @@ export function CreateListingForm() {
   } | null>(null);
   const [progress, setProgress] = useState(0);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const { register, handleSubmit, control, setValue, getValues, formState: { errors }, reset } = useForm<ListingFormData>({
+  const { control, register, handleSubmit, setValue, getValues, formState: { errors }, reset } = useForm<ListingFormData>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
       keyFeatures: [],
+      photos: [],
     }
   });
 
+  // Handle photo preview and deletion
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newPreviews = Array.from(files).map(file => URL.createObjectURL(file));
-      setPhotoPreviews(newPreviews);
-      setValue('photos', files);
-    }
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    setSelectedFiles(files);
+    setPhotoPreviews(files.map(file => URL.createObjectURL(file)));
+    setValue('photos', files, { shouldValidate: true });
+  };
+
+  const handlePhotoDelete = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+    setValue('photos', newFiles, { shouldValidate: true });
   };
 
   const readFileAsDataURL = (file: File): Promise<string> => {
@@ -87,6 +96,7 @@ export function CreateListingForm() {
     });
   };
 
+  // AI Assist and Price Suggestion logic (unchanged)
   const handleAIAssist = async () => {
     setIsLoadingAI(true);
     setProgress(10);
@@ -114,7 +124,7 @@ export function CreateListingForm() {
       setAiResults(prev => ({ ...prev, listingDetails }));
       setProgress(60);
 
-      const photoDataUris = await Promise.all(Array.from(files).map(file => readFileAsDataURL(file).then(uri => file.type.startsWith('image/') ? uri : 'data:image/jpeg;base64,'+uri.split(',')[1] )));
+      const photoDataUris = await Promise.all(files.map(file => readFileAsDataURL(file).then(uri => file.type.startsWith('image/') ? uri : 'data:image/jpeg;base64,'+uri.split(',')[1] )));
       const conditionInput: AnalyzeVehicleConditionInput = { 
         photoDataUris, 
         description: getValues('conditionDescription') || listingDetails.description 
@@ -172,22 +182,49 @@ export function CreateListingForm() {
     }
   }
 
+  // CLOUDINARY UPLOAD
+  const uploadToCloudinary = async (file: File) => {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Failed to upload image");
+    const data = await res.json();
+    return data.secure_url as string;
+  };
+
+  // SUBMIT HANDLER
   const onSubmit = async (data: ListingFormData) => {
     setIsSubmitting(true);
     try {
-      // Prepare data for API (remove FileList, send only necessary fields)
+      // 1. Upload images to Cloudinary
+      const photoFiles = selectedFiles;
+      const photoUrls: string[] = [];
+      for (const file of photoFiles) {
+        const url = await uploadToCloudinary(file);
+        photoUrls.push(url);
+      }
+
+      // 2. Prepare listing data with Cloudinary URLs
       const { photos, ...rest } = data;
-  
-      // If you want to upload images, you need to handle file uploads (not shown here).
-      // For now, just send the listing data (without photos) as JSON:
+      const listingPayload = {
+        ...rest,
+        photoUrls,
+      };
+
+      // 3. Send listing data to backend
       const res = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rest),
+        body: JSON.stringify(listingPayload),
       });
-  
+
       const result = await res.json();
-  
+
       if (res.ok) {
         toast({
           title: "Listing Submitted!",
@@ -196,6 +233,7 @@ export function CreateListingForm() {
         });
         reset();
         setPhotoPreviews([]);
+        setSelectedFiles([]);
         setAiResults(null);
       } else {
         toast({
@@ -227,12 +265,36 @@ export function CreateListingForm() {
           {/* Photo Upload */}
           <div className="space-y-2">
             <Label htmlFor="photos" className="text-lg font-semibold">Vehicle Photos (Max 5, up to 5MB each)</Label>
-            <Input id="photos" type="file" multiple accept="image/*" {...register('photos')} onChange={handlePhotoChange} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
-            {errors.photos && <p className="text-sm text-destructive">{errors.photos.message}</p>}
+            <Controller
+              control={control}
+              name="photos"
+              defaultValue={[]}
+              render={() => (
+                <Input
+                  id="photos"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              )}
+            />
+            {errors.photos && <p className="text-sm text-destructive">{errors.photos.message as string}</p>}
             {photoPreviews.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {photoPreviews.map((src, index) => (
-                  <Image key={index} src={src} alt={`Preview ${index + 1}`} width={100} height={100} className="rounded-md object-cover aspect-square" />
+                  <div key={index} className="relative group">
+                    <Image src={src} alt={`Preview ${index + 1}`} width={100} height={100} className="rounded-md object-cover aspect-square" />
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoDelete(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100"
+                      title="Delete"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
