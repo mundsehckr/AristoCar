@@ -24,14 +24,16 @@ import { useToast } from '@/hooks/use-toast';
 
 const IndianRupee = ({ amount }: { amount: number }) => <>₹{amount.toLocaleString('en-IN')}</>;
 
-export default function VehicleDetailPage({ params }: { params: { id: string } }) {
+export default function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [vehicle, setVehicle] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<any>(null);
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+
+  const { id } = React.use(params);
 
   useEffect(() => {
     const fetchVehicle = async () => {
@@ -40,23 +42,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
         const res = await fetch("/api/listings", { method: "GET" });
         const data = await res.json();
         if (res.ok && data.listings) {
-          const found = data.listings.find((l: any) => l._id === params.id);
+          const found = data.listings.find((l: any) => l._id === id);
           if (found) {
             const images = (found.photoUrls || []).map((url: string) => ({ url, hint: "car photo" }));
 
-            // Always use John Doe as the seller for this car
-            const johnDoeSeller = {
-              name: found.seller?.name || "John Doe",
-              phone: found.seller?.phone || "+91 90000 00000",
-              email: found.seller?.email || "john.doe@email.com",
-              rating: found.seller?.rating ?? 4.9,
-              reviewsCount: found.seller?.reviewsCount ?? 23,
-              verified: found.seller?.verified ?? true,
-              memberSince: found.seller?.memberSince || "Jan 2023",
-              profileUrl: found.seller?.profileUrl || "/profile/john-doe",
-              avatar: found.seller?.avatar || "https://placehold.co/80x80.png"
-            };
-
+            // Use seller from backend directly
             const v = {
               ...found,
               images: images.length > 0 ? images : [{ url: 'https://placehold.co/800x450.png', hint: 'default' }],
@@ -93,7 +83,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               documentation: found.documentation || { status: 'Clean Title (RC Available), Valid Insurance till Jan 2025, PUC valid.', docsUrl: '#' },
               modifications: found.modifications || 'None, completely stock.',
               financialInfo: found.financialInfo || { lien: 'None / Clear Title' },
-              seller: johnDoeSeller,
+              seller: found.seller, // Use backend seller object directly!
               accessoriesChecklist: found.accessoriesChecklist || [
                 { name: 'Air Conditioning (Manual)', isWorking: true, group: 'Comfort & Convenience' },
                 { name: 'Central Locking', isWorking: true, group: 'Safety' },
@@ -115,7 +105,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
       }
     };
     fetchVehicle();
-  }, [params.id]);
+  }, [id]);
 
   if (loading || !vehicle) {
     return (
@@ -386,10 +376,17 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 <Button 
                   size="lg" 
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base"
-                  onClick={() => handleAction(() => {
-                    toast({ title: "Starting Conversation...", description: "Redirecting to your messages." });
-                    router.push('/messages');
-                  })}
+                  onClick={() => {
+                    if (!vehicle.seller) {
+                      toast({ title: "Seller information not available for this listing." });
+                      return;
+                    }
+                    if (user && vehicle.seller._id && user.id && String(vehicle.seller._id) === String(user.id)) {
+                      toast({ title: "You cannot message yourself!", description: "You have listed this car." });
+                      return;
+                    }
+                    router.push(`/message?seller=${vehicle.seller._id}&listing=${vehicle._id}`);
+                  }}
                 >
                   <MessageSquare className="mr-2 h-5 w-5" /> Contact User
                 </Button>
@@ -418,28 +415,28 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               <CardContent>
                 <h4 className="font-headline text-xl text-primary mb-3">User Information</h4>
                 <div className="flex items-center space-x-3 mb-3">
-                  <Image src={vehicle.seller.avatar} alt={vehicle.seller.name} width={60} height={60} className="rounded-full border-2 border-accent" data-ai-hint="user avatar"/>
+                  <Image src={vehicle.seller?.avatar || "https://placehold.co/80x80.png"} alt={vehicle.seller?.name || "User"} width={60} height={60} className="rounded-full border-2 border-accent" data-ai-hint="user avatar"/>
                   <div>
-                    <Link href={vehicle.seller.profileUrl} className="font-semibold text-lg hover:text-accent transition-colors">{vehicle.seller.name}</Link>
+                    <Link href={vehicle.seller?.profileUrl || "#"} className="font-semibold text-lg hover:text-accent transition-colors">{vehicle.seller?.name || "Unknown"}</Link>
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1"/> {vehicle.seller.rating} ({vehicle.seller.reviewsCount} reviews)
+                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400 mr-1"/> {vehicle.seller?.rating ?? 0} ({vehicle.seller?.reviewsCount ?? 0} reviews)
                     </div>
-                    <p className="text-xs text-muted-foreground">Member since {vehicle.seller.memberSince}</p>
+                    <p className="text-xs text-muted-foreground">Member since {vehicle.seller?.memberSince || "N/A"}</p>
                   </div>
                 </div>
-                {vehicle.seller.verified && <Badge variant="secondary" className="bg-green-100 text-green-700 mb-3"><ShieldCheck className="h-4 w-4 mr-1"/>Verified User</Badge>}
+                {vehicle.seller?.verified && <Badge variant="secondary" className="bg-green-100 text-green-700 mb-3"><ShieldCheck className="h-4 w-4 mr-1"/>Verified User</Badge>}
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Phone className="h-4 w-4 mr-2 text-accent" />
-                    <span>{vehicle.seller.phone}</span>
+                    <span>{vehicle.seller?.phone || "N/A"}</span>
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <MessageSquare className="h-4 w-4 mr-2 text-accent" />
-                    <span>{vehicle.seller.email}</span>
+                    <span>{vehicle.seller?.email || "N/A"}</span>
                   </div>
                 </div>
                 <Button variant="outline" className="w-full text-sm mt-3" asChild>
-                    <Link href={vehicle.seller.profileUrl}>View User Profile</Link>
+                    <Link href={vehicle.seller?.profileUrl || "#"}>View User Profile</Link>
                 </Button>
               </CardContent>
                 <Separator className="my-4"/>
