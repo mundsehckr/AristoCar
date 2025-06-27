@@ -1,23 +1,20 @@
-
 "use client";
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   CalendarDays, Gauge, Palette, ShieldCheck, Wrench, FileText, MessageSquare, TrendingUp, Star, 
-  Heart, User, Car, Briefcase, Zap, MapPin, Maximize, Minimize, Thermometer, Weight,
-  GitMerge, Fuel, AlignLeft, Columns, ChevronsUpDown, Cog, Users as UsersIcon, AirVent, Radio,
-  Wind, Sun, Volume2, Key, Lock, ParkingCircle, Camera, Navigation, CheckCircle2, XCircle, CircleDotDashed, UsersRound,
-  Clock, Sparkles
+  Heart, Car, MapPin, Maximize, Lock, Key, AirVent, Radio,
+  GitMerge, Fuel, AlignLeft, CheckCircle2, XCircle, Clock, Sparkles, Phone
 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -25,123 +22,115 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
-
 const IndianRupee = ({ amount }: { amount: number }) => <>₹{amount.toLocaleString('en-IN')}</>;
 
-const vehicle = {
-  id: '123',
-  price: 650000,
-  images: [
-    { url: 'https://placehold.co/800x450.png', hint: 'hatchback red front' },
-    { url: 'https://placehold.co/600x400.png', hint: 'hatchback red side' },
-    { url: 'https://placehold.co/600x400.png', hint: 'hatchback red rear' },
-    { url: 'https://placehold.co/600x400.png', hint: 'car interior dashboard' },
-    { url: 'https://placehold.co/600x400.png', hint: 'car engine bay' },
-    { url: 'https://placehold.co/600x400.png', hint: 'car trunk space' },
-    { url: 'https://placehold.co/600x400.png', hint: 'alloy wheel detail' },
-  ],
-  make: 'Maruti Suzuki',
-  model: 'Swift',
-  variant: 'VXI',
-  year: 2023, // Updated to be nearly new
-  isFeatured: true,
-  isTrending: true,
-  isRecentlyAdded: true,
-  isSold: false,
-  mileage: 22000,
-  color: 'Solid Fire Red',
-  bodyType: 'Hatchback',
-  transmission: 'Manual',
-  fuelType: 'Petrol',
-  engineName: '1.2L K-Series Petrol Engine',
-  engineDisplacement: '1197 cc',
-  maxPower: '88.50 bhp @ 6000 rpm',
-  maxTorque: '113 Nm @ 4400 rpm',
-  drivetrain: 'FWD (Front-Wheel Drive)',
-  fuelEconomyCity: '18 kmpl',
-  fuelEconomyHighway: '23 kmpl',
-  vin: 'MA3EXXXXXXXXXXXX',
-  registrationNo: 'MH01AB1234',
-  insuranceValidity: 'Jan 2025',
-  numOwners: 1,
-  location: 'Mumbai, Maharashtra',
-  pincode: '400001',
-  description: 'This 2021 Maruti Suzuki Swift VXI is in excellent condition, regularly serviced, and single-owner driven. Perfect city car with great mileage. Comes with company-fitted music system and all standard features. Selling to upgrade to a new vehicle. All papers are clear. Price slightly negotiable for serious buyers.',
-  keyFeaturesHighlight: [ 
-    { name: 'Company Fitted Music System', icon: <Radio/>, group: 'Entertainment' },
-    { name: 'Power Windows (All)', icon: <Maximize/>, group: 'Comfort' },
-    { name: 'Central Locking', icon: <Lock/>, group: 'Safety' },
-    { name: 'Remote Keyless Entry', icon: <Key/>, group: 'Comfort' },
-    { name: 'ABS with EBD', icon: <ShieldCheck/>, group: 'Safety' },
-    { name: 'Dual Airbags', icon: <AirVent/>, group: 'Safety' },
-  ],
-  dimensions: { length: '3845 mm', width: '1735 mm', height: '1530 mm', wheelbase: '2450 mm', groundClearance: '163 mm' },
-  capacities: { fuelTank: '37 Litres', bootSpace: '268 Litres', seating: '5 Persons' },
-  condition: { assessment: 'Excellent', reportUrl: '#', summary: 'No major dents or scratches, clean interior, tires in good condition.' },
-  serviceHistory: { summary: 'All services up-to-date, performed at authorized Maruti Suzuki service center. Records available.', recordsUrl: '#' },
-  documentation: { status: 'Clean Title (RC Available), Valid Insurance till Jan 2025, PUC valid.', docsUrl: '#' },
-  modifications: 'None, completely stock.',
-  financialInfo: { lien: 'None / Clear Title' },
-  seller: { name: 'Rohan Sharma', rating: 4.8, reviewsCount: 15, verified: true, memberSince: 'Oct 2022', profileUrl: '/profile/rohan-sharma', avatar: 'https://placehold.co/80x80.png' },
-  accessoriesChecklist: [
-    // Comfort & Convenience
-    { name: 'Air Conditioning (Manual)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Heater', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Power Steering', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Power Windows (Front)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Power Windows (Rear)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Adjustable Steering Column (Tilt)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Remote Keyless Entry', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Low Fuel Warning Light', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Vanity Mirror (Co-Driver)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Cup Holders (Front)', isWorking: true, group: 'Comfort & Convenience' },
-    { name: 'Rear Parking Sensors', isWorking: true, group: 'Comfort & Convenience' },
-    // Safety
-    { name: 'Central Locking', isWorking: true, group: 'Safety' },
-    { name: 'Anti-Lock Braking System (ABS)', isWorking: true, group: 'Safety' },
-    { name: 'Electronic Brake-force Distribution (EBD)', isWorking: true, group: 'Safety' },
-    { name: 'Brake Assist (BA)', isWorking: true, group: 'Safety' },
-    { name: 'Driver Airbag', isWorking: true, group: 'Safety' },
-    { name: 'Passenger Airbag', isWorking: true, group: 'Safety' },
-    { name: 'Seat Belt Warning', isWorking: true, group: 'Safety' },
-    { name: 'Child Safety Locks', isWorking: true, group: 'Safety' },
-    { name: 'ISOFIX Child Seat Mounts', isWorking: true, group: 'Safety' },
-    { name: 'Engine Immobilizer', isWorking: true, group: 'Safety' },
-    { name: 'Speed Alert', isWorking: true, group: 'Safety' },
-    // Interior
-    { name: 'Upholstery (Fabric)', isWorking: true, group: 'Interior' },
-    { name: 'Tachometer (Analog)', isWorking: true, group: 'Interior' },
-    { name: 'Electronic Multi-Tripmeter', isWorking: true, group: 'Interior' },
-    { name: 'Digital Clock', isWorking: true, group: 'Interior' },
-    { name: 'Digital Odometer', isWorking: true, group: 'Interior' },
-    { name: 'Glove Compartment', isWorking: true, group: 'Interior' },
-    { name: 'Adjustable Headrests (Front & Rear)', isWorking: true, group: 'Interior' },
-    // Exterior
-    { name: 'Halogen Headlamps', isWorking: true, group: 'Exterior' },
-    { name: 'Body Coloured Bumpers', isWorking: true, group: 'Exterior' },
-    { name: 'Power Adjustable ORVMs (Manual Fold)', isWorking: true, group: 'Exterior' },
-    { name: 'Turn Indicators on ORVM', isWorking: false, group: 'Exterior' }, // Example: Feature not present/working
-    { name: 'Steel Wheels with Wheel Covers', isWorking: true, group: 'Exterior' },
-    // Entertainment & Communication
-    { name: 'Audio System (Company Fitted)', isWorking: true, group: 'Entertainment & Communication' },
-    { name: 'Speakers (Front)', isWorking: true, group: 'Entertainment & Communication' },
-    { name: 'Speakers (Rear)', isWorking: true, group: 'Entertainment & Communication' },
-    { name: 'USB & Auxiliary input', isWorking: true, group: 'Entertainment & Communication' },
-    { name: 'Bluetooth Connectivity (Phone & Audio Streaming)', isWorking: true, group: 'Entertainment & Communication' },
-    { name: 'Steering Mounted Audio Controls', isWorking: true, group: 'Entertainment & Communication' },
-  ],
-};
-
-const keyFeatureGroups = Array.from(new Set(vehicle.keyFeaturesHighlight.map(f => f.group)));
-const accessoriesGroups = Array.from(new Set(vehicle.accessoriesChecklist.map(f => f.group)));
-
-
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
-  const [selectedImage, setSelectedImage] = useState(vehicle.images[0]);
+  const [vehicle, setVehicle] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<any>(null);
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchVehicle = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/listings", { method: "GET" });
+        const data = await res.json();
+        if (res.ok && data.listings) {
+          const found = data.listings.find((l: any) => l._id === params.id);
+          if (found) {
+            const images = (found.photoUrls || []).map((url: string) => ({ url, hint: "car photo" }));
+
+            // Always use John Doe as the seller for this car
+            const johnDoeSeller = {
+              name: found.seller?.name || "John Doe",
+              phone: found.seller?.phone || "+91 90000 00000",
+              email: found.seller?.email || "john.doe@email.com",
+              rating: found.seller?.rating ?? 4.9,
+              reviewsCount: found.seller?.reviewsCount ?? 23,
+              verified: found.seller?.verified ?? true,
+              memberSince: found.seller?.memberSince || "Jan 2023",
+              profileUrl: found.seller?.profileUrl || "/profile/john-doe",
+              avatar: found.seller?.avatar || "https://placehold.co/80x80.png"
+            };
+
+            const v = {
+              ...found,
+              images: images.length > 0 ? images : [{ url: 'https://placehold.co/800x450.png', hint: 'default' }],
+              variant: found.variant || "VXI",
+              color: found.color || "Red",
+              bodyType: found.bodyType || "Hatchback",
+              transmission: found.transmission || "Manual",
+              fuelType: found.fuelType || "Petrol",
+              engineName: found.engineName || "1.2L K-Series Petrol Engine",
+              engineDisplacement: found.engineDisplacement || "1197 cc",
+              maxPower: found.maxPower || "88.50 bhp @ 6000 rpm",
+              maxTorque: found.maxTorque || "113 Nm @ 4400 rpm",
+              drivetrain: found.drivetrain || "FWD",
+              fuelEconomyCity: found.fuelEconomyCity || "18 kmpl",
+              fuelEconomyHighway: found.fuelEconomyHighway || "23 kmpl",
+              registrationNo: found.registrationNo || "MH01AB1234",
+              insuranceValidity: found.insuranceValidity || "Jan 2025",
+              numOwners: found.numOwners || 1,
+              location: found.location || "Mumbai, Maharashtra",
+              pincode: found.pincode || "400001",
+              description: found.description || "No description provided.",
+              keyFeaturesHighlight: found.keyFeaturesHighlight || [
+                { name: 'Company Fitted Music System', icon: <Radio/>, group: 'Entertainment' },
+                { name: 'Power Windows (All)', icon: <Maximize/>, group: 'Comfort' },
+                { name: 'Central Locking', icon: <Lock/>, group: 'Safety' },
+                { name: 'Remote Keyless Entry', icon: <Key/>, group: 'Comfort' },
+                { name: 'ABS with EBD', icon: <ShieldCheck/>, group: 'Safety' },
+                { name: 'Dual Airbags', icon: <AirVent/>, group: 'Safety' },
+              ],
+              dimensions: found.dimensions || { length: '3845 mm', width: '1735 mm', height: '1530 mm', wheelbase: '2450 mm', groundClearance: '163 mm' },
+              capacities: found.capacities || { fuelTank: '37 Litres', bootSpace: '268 Litres', seating: '5 Persons' },
+              condition: found.condition || { assessment: 'Excellent', reportUrl: '#', summary: 'No major dents or scratches, clean interior, tires in good condition.' },
+              serviceHistory: found.serviceHistory || { summary: 'All services up-to-date, performed at authorized service center. Records available.', recordsUrl: '#' },
+              documentation: found.documentation || { status: 'Clean Title (RC Available), Valid Insurance till Jan 2025, PUC valid.', docsUrl: '#' },
+              modifications: found.modifications || 'None, completely stock.',
+              financialInfo: found.financialInfo || { lien: 'None / Clear Title' },
+              seller: johnDoeSeller,
+              accessoriesChecklist: found.accessoriesChecklist || [
+                { name: 'Air Conditioning (Manual)', isWorking: true, group: 'Comfort & Convenience' },
+                { name: 'Central Locking', isWorking: true, group: 'Safety' },
+              ],
+              isFeatured: found.isFeatured ?? true,
+              isTrending: found.isTrending ?? true,
+              isRecentlyAdded: found.isRecentlyAdded ?? true,
+              isSold: found.isSold ?? false,
+              price: found.suggestedPrice || found.price || 0,
+              mileage: found.mileage || 0,
+              year: found.year || 2023,
+            };
+            setVehicle(v);
+            setSelectedImage(v.images[0]);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVehicle();
+  }, [params.id]);
+
+  if (loading || !vehicle) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <span className="ml-3 text-muted-foreground">Loading vehicle details...</span>
+      </div>
+    );
+  }
+
+  const keyFeatureGroups: string[] = Array.from(
+    new Set((vehicle.keyFeaturesHighlight || []).map((f: any) => String(f.group)))
+  );
+  const accessoriesGroups: string[] = Array.from(
+    new Set((vehicle.accessoriesChecklist || []).map((f: any) => String(f.group)))
+  );
 
   const handleAction = (action: () => void, requiresAuth: boolean = true) => {
     if (requiresAuth && !isAuthenticated) {
@@ -154,7 +143,6 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   const currentYear = new Date().getFullYear();
   const isNearlyNew = !vehicle.isSold && (currentYear - vehicle.year <= 1);
 
-
   return (
     <div className="flex flex-col min-h-screen bg-secondary/30">
       <Header />
@@ -162,6 +150,8 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Image Gallery & Main Info (Left/Center Column) */}
           <div className="lg:col-span-2 space-y-6">
+            {/* ...left/center column code remains unchanged... */}
+            {/* ...see previous code for details... */}
             <Card className="shadow-xl bg-card/95 backdrop-blur-sm">
               <CardHeader>
                  <div className="flex items-baseline gap-x-2">
@@ -195,7 +185,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                   <span className="flex items-center"><CalendarDays className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.year}</span>
                   <span className="flex items-center"><Gauge className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.mileage.toLocaleString('en-IN')} km</span>
                   <span className="flex items-center"><Palette className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.color}</span>
-                  <span className="flex items-center"><Cog className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.transmission}</span>
+                  <span className="flex items-center"><Lock className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.transmission}</span>
                   <span className="flex items-center"><Fuel className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.fuelType}</span>
                   <span className="flex items-center"><Car className="h-4 w-4 mr-1.5 text-accent" /> {vehicle.bodyType}</span>
                 </div>
@@ -218,7 +208,7 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 
                 <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-secondary/50">
                   <div className="flex space-x-3 p-3">
-                    {vehicle.images.map((img, index) => (
+                    {vehicle.images.map((img: any, index: number) => (
                       <button
                         key={index}
                         onClick={() => setSelectedImage(img)}
@@ -251,11 +241,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
 
                 <h3 className="font-headline text-2xl text-primary mb-4">Key Features (Highlights)</h3>
                 <div className="space-y-4">
-                  {keyFeatureGroups.map(group => (
+                  {keyFeatureGroups.map((group) => (
                     <div key={group}>
                       <h4 className="font-semibold text-primary/80 mb-2">{group}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                        {vehicle.keyFeaturesHighlight.filter(f => f.group === group).map(feature => (
+                        {vehicle.keyFeaturesHighlight.filter((f: any) => f.group === group).map((feature: any) => (
                           <div key={feature.name} className="flex items-center text-sm text-foreground/80">
                             {React.cloneElement(feature.icon, { className: "h-5 w-5 mr-2 text-accent" })}
                             {feature.name}
@@ -326,11 +316,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {accessoriesGroups.map(group => (
+                {accessoriesGroups.map((group) => (
                   <div key={group}>
                     <h4 className="font-headline text-lg text-primary/80 mb-2 border-b pb-1">{group}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                      {vehicle.accessoriesChecklist.filter(acc => acc.group === group).map(accessory => (
+                      {vehicle.accessoriesChecklist.filter((acc: any) => acc.group === group).map((accessory: any) => (
                         <div key={accessory.name} className="flex items-center text-sm">
                           {accessory.isWorking ? (
                             <CheckCircle2 className="h-5 w-5 mr-2 text-green-500 flex-shrink-0" />
@@ -345,7 +335,6 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 ))}
               </CardContent>
             </Card>
-
 
             {/* Other Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -439,7 +428,17 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
                 {vehicle.seller.verified && <Badge variant="secondary" className="bg-green-100 text-green-700 mb-3"><ShieldCheck className="h-4 w-4 mr-1"/>Verified User</Badge>}
-                <Button variant="outline" className="w-full text-sm" asChild>
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4 mr-2 text-accent" />
+                    <span>{vehicle.seller.phone}</span>
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MessageSquare className="h-4 w-4 mr-2 text-accent" />
+                    <span>{vehicle.seller.email}</span>
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full text-sm mt-3" asChild>
                     <Link href={vehicle.seller.profileUrl}>View User Profile</Link>
                 </Button>
               </CardContent>

@@ -21,6 +21,7 @@ export default function MyListingsPage() {
     const router = useRouter();
     const [userListings, setUserListings] = useState<any[]>([]);
     const [fetching, setFetching] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     useEffect(() => {
         if (!loading && !isAuthenticated) {
@@ -28,26 +29,72 @@ export default function MyListingsPage() {
         }
     }, [isAuthenticated, loading, router]);
 
-    useEffect(() => {
-        const fetchListings = async () => {
-            setFetching(true);
-            try {
-                const res = await fetch('/api/listings', { method: 'GET' });
-                const data = await res.json();
-                if (res.ok && data.listings) {
-                    setUserListings(data.listings);
-                } else {
-                    setUserListings([]);
-                }
-            } catch {
+    const fetchListings = async () => {
+        setFetching(true);
+        try {
+            const res = await fetch('/api/listings', { method: 'GET' });
+            const data = await res.json();
+            if (res.ok && data.listings) {
+                setUserListings(data.listings);
+            } else {
                 setUserListings([]);
             }
-            setFetching(false);
-        };
+        } catch {
+            setUserListings([]);
+        }
+        setFetching(false);
+    };
+
+    useEffect(() => {
         if (isAuthenticated && user) {
             fetchListings();
         }
     }, [isAuthenticated, user]);
+
+    // DELETE handler
+    const handleDelete = async (listingId: string) => {
+        if (!window.confirm("Are you sure you want to delete this listing?")) return;
+        setActionLoading(listingId);
+        try {
+            const res = await fetch('/api/listings', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ listingId }),
+            });
+            if (res.ok) {
+                setUserListings(listings => listings.filter(l => l._id !== listingId));
+            } else {
+                alert('Failed to delete listing.');
+            }
+        } catch {
+            alert('Failed to delete listing.');
+        }
+        setActionLoading(null);
+    };
+
+    // MARK AS SOLD handler
+    const handleMarkAsSold = async (listingId: string) => {
+        setActionLoading(listingId);
+        try {
+            const res = await fetch('/api/listings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ listingId, update: { status: "Sold" } }),
+            });
+            if (res.ok) {
+                setUserListings(listings =>
+                    listings.map(l =>
+                        l._id === listingId ? { ...l, status: "Sold" } : l
+                    )
+                );
+            } else {
+                alert('Failed to mark as sold.');
+            }
+        } catch {
+            alert('Failed to mark as sold.');
+        }
+        setActionLoading(null);
+    };
 
     if (loading || !isAuthenticated || !user) {
         return (
@@ -115,10 +162,39 @@ export default function MyListingsPage() {
                                     </div>
                                     <Separator className="my-4"/>
                                     <div className="flex flex-wrap gap-2 justify-end">
-                                        <Button variant="outline" size="sm"><Edit className="mr-1.5 h-3 w-3"/> Edit</Button>
-                                        {(!listing.status || listing.status === 'Active') && <Button variant="outline" size="sm" className="text-red-600 border-red-600/50 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-1.5 h-3 w-3"/> Delete</Button>}
-                                        {(!listing.status || listing.status === 'Active') && <Button variant="secondary" size="sm"><ToggleRight className="mr-1.5 h-4 w-4"/> Mark as Sold</Button>}
-                                        {listing.status && listing.status !== 'Active' && <Button variant="outline" size="sm">Re-list Vehicle</Button>}
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/sell/edit-listing/${listing._id}`}>
+                                                <Edit className="mr-1.5 h-3 w-3"/> Edit
+                                            </Link>
+                                        </Button>
+                                        {(!listing.status || listing.status === 'Active') && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-red-600 border-red-600/50 hover:bg-red-50 hover:text-red-700"
+                                                onClick={() => handleDelete(listing._id)}
+                                                disabled={actionLoading === listing._id}
+                                            >
+                                                {actionLoading === listing._id ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1.5 h-3 w-3" />}
+                                                Delete
+                                            </Button>
+                                        )}
+                                        {(!listing.status || listing.status === 'Active') && (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => handleMarkAsSold(listing._id)}
+                                                disabled={actionLoading === listing._id}
+                                            >
+                                                {actionLoading === listing._id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <ToggleRight className="mr-1.5 h-4 w-4" />}
+                                                Mark as Sold
+                                            </Button>
+                                        )}
+                                        {listing.status && listing.status !== 'Active' && (
+                                            <Button variant="outline" size="sm" disabled>
+                                                Re-list Vehicle
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </Card>

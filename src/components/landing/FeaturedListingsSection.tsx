@@ -1,20 +1,77 @@
-
+"use client";
+import { useEffect, useState } from "react";
 import { CarCard } from '@/components/shared/CarCard';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const sampleCars = [
-  { id: '1', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'suv white modern', title: '2022 Hyundai Creta SX', year: 2022, price: 1500000, mileage: 12000, transmission: 'Automatic', fuelType: 'Petrol', location: 'Mumbai, MH', isFeatured: true, isTrending: true },
-  { id: '7', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'hatchback sporty yellow', title: '2023 Maruti Swift ZXI+', year: 2023, price: 900000, mileage: 4000, transmission: 'AMT', fuelType: 'Petrol', location: 'Noida, UP', isFeatured: true, isTrending: true, isRecentlyAdded: true },
-  { id: '2', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'sedan silver luxury', title: '2021 Honda City ZX', year: 2021, price: 1250000, mileage: 18000, transmission: 'CVT', fuelType: 'Petrol', location: 'Delhi, DL', isRecentlyAdded: true },
-  { id: '4', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'ev teal compact', title: '2023 Tata Nexon EV Max', year: 2023, price: 1800000, mileage: 7000, transmission: 'Automatic', fuelType: 'Electric', location: 'Pune, MH', isFeatured: true, isRecentlyAdded: true },
-  { id: '5', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'sedan red elegant', title: '2022 Skoda Slavia Ambition', year: 2022, price: 1350000, mileage: 9000, transmission: 'Automatic', fuelType: 'Petrol', location: 'Chennai, TN', isSold: true },
-  { id: '6', imageUrl: 'https://placehold.co/600x338.png', imageHint: 'suv grey sturdy', title: '2021 Mahindra XUV700 AX5', year: 2021, price: 1950000, mileage: 22000, transmission: 'Manual', fuelType: 'Diesel', location: 'Hyderabad, TS', isTrending: true },
+type Listing = {
+  _id: string;
+  title?: string;
+  make: string;
+  model: string;
+  year: number;
+  price?: number;
+  suggestedPrice?: number;
+  mileage: number;
+  location?: string;
+  photoUrls: string[];
+  // ...other fields from your DB
+};
+
+const staticTransmissions = ["Automatic", "Manual", "CVT", "AMT"];
+const staticFuelTypes = ["Petrol", "Diesel", "Electric"];
+const staticLocations = [
+  "Mumbai, MH", "Delhi, DL", "Noida, UP", "Pune, MH", "Chennai, TN", "Hyderabad, TS"
 ];
 
+function getRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 export function FeaturedListingsSection() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/listings", { method: "GET" });
+        const data = await res.json();
+        if (res.ok && data.listings) {
+          setListings(data.listings.slice(0, 6)); // Only show up to 6 for featured section
+        } else {
+          setListings([]);
+        }
+      } catch {
+        setListings([]);
+      }
+      setLoading(false);
+    };
+    fetchListings();
+  }, []);
+
+  // Map cars with static/random fields for display
+  const mappedCars = listings.map((car, idx) => ({
+    id: car._id,
+    imageUrl: car.photoUrls?.[0] || "https://placehold.co/600x338.png",
+    title: car.title || `${car.year} ${car.make} ${car.model}`,
+    year: car.year,
+    price: car.suggestedPrice || car.price || 0,
+    mileage: car.mileage,
+    transmission: getRandom(staticTransmissions),
+    fuelType: getRandom(staticFuelTypes),
+    location: car.location || getRandom(staticLocations),
+  }));
+
+  // Featured: first 3 cars
+  const featuredCars = mappedCars.slice(0, 3);
+
+  // Recently Added: last 3 cars (from the fetched 6)
+  const recentlyAddedCars = mappedCars.slice(-3);
+
   return (
     <section className="py-16 sm:py-24">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,32 +93,39 @@ export function FeaturedListingsSection() {
             </TabsList>
           </div>
           <TabsContent value="all">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sampleCars.map((car, index) => (
-                <div key={car.id} className="animate-slide-in-up" style={{animationDelay: `${index * 0.05 + 0.1}s`}}>
-                  <CarCard {...car} />
-                </div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-10 text-muted-foreground">Loading...</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {mappedCars.map((car, index) => (
+                  <div key={car.id} className="animate-slide-in-up" style={{animationDelay: `${index * 0.05 + 0.1}s`}}>
+                    <CarCard {...car} />
+                  </div>
+                ))}
+                {mappedCars.length === 0 && (
+                  <p className="col-span-full text-center text-muted-foreground">No cars to show.</p>
+                )}
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="featured">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sampleCars.filter(car => car.isFeatured).map((car, index) => (
+              {featuredCars.map((car, index) => (
                 <div key={car.id} className="animate-slide-in-up" style={{animationDelay: `${index * 0.05 + 0.1}s`}}>
                   <CarCard {...car} />
                 </div>
               ))}
-              {sampleCars.filter(car => car.isFeatured).length === 0 && <p className="col-span-full text-center text-muted-foreground">No featured cars at the moment.</p>}
+              {featuredCars.length === 0 && <p className="col-span-full text-center text-muted-foreground">No featured cars at the moment.</p>}
             </div>
           </TabsContent>
           <TabsContent value="recent">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sampleCars.filter(car => car.isRecentlyAdded).map((car, index) => ( 
+              {recentlyAddedCars.map((car, index) => ( 
                 <div key={car.id} className="animate-slide-in-up" style={{animationDelay: `${index * 0.05 + 0.1}s`}}>
                   <CarCard {...car} />
                 </div>
               ))}
-               {sampleCars.filter(car => car.isRecentlyAdded).length === 0 && <p className="col-span-full text-center text-muted-foreground">No recently added cars to show.</p>}
+               {recentlyAddedCars.length === 0 && <p className="col-span-full text-center text-muted-foreground">No recently added cars to show.</p>}
             </div>
           </TabsContent>
         </Tabs>
