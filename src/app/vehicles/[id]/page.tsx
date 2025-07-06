@@ -382,9 +382,10 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                       return;
                     }
                     if (user && vehicle.seller._id && user.id && String(vehicle.seller._id) === String(user.id)) {
+                      console.log(vehicle.seller._id, user.id);
                       toast({ title: "You cannot message yourself!", description: "You have listed this car." });
                       return;
-                    }
+                    }else
                     router.push(`/message?seller=${vehicle.seller._id}&listing=${vehicle._id}`);
                   }}
                 >

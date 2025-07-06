@@ -54,6 +54,45 @@ export async function GET(req: NextRequest) {
   }
 }
 
+
+export async function POST(req: NextRequest) {
+  const token = req.cookies.get('token')?.value;
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let user;
+  try {
+    user = jwt.verify(token, JWT_SECRET) as { userId: string };
+  } catch {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  // Validate required fields (add more as needed)
+  if (!body.make || !body.model || !body.photoUrls || !Array.isArray(body.photoUrls)) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    const listings = db.collection('listings');
+    const newListing = {
+      ...body,
+      userId: new ObjectId(user.userId),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const result = await listings.insertOne(newListing);
+    return NextResponse.json({ message: 'Listing created', listingId: result.insertedId });
+  } catch (err) {
+    return NextResponse.json({ error: 'Failed to create listing' }, { status: 500 });
+  }
+}
 export async function PATCH(req: NextRequest) {
   const token = req.cookies.get('token')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
